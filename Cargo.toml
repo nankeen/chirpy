@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = ["crates/chirpy-core", "crates/chirpy-tx", "crates/chirpy-rx"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+chirpy-core = { path = "crates/chirpy-core" }
+
+anyhow = "1"
+thiserror = "1"
+clap = { version = "4", features = ["derive"] }
+cpal = "0.15"
+crc = "3"
+hound = "3.5"
+num-complex = "0.4"
+rustfft = "6"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
