@@ -39,6 +39,31 @@ fn survives_moderate_awgn() {
 }
 
 #[test]
+fn survives_fractional_timing_offset() {
+    // Real acoustic channels never align to integer samples. Shift the entire
+    // modulated waveform by a non-integer number of samples (linear interp on
+    // the signal itself) and verify the decoder still recovers the payload.
+    let cfg = Config::default();
+    let payload = b"fractional timing offsets must not break us".to_vec();
+    let clean = encode_samples(&payload, &cfg).unwrap();
+
+    for &frac in &[0.13_f32, 0.37, 0.5, 0.71, 0.89] {
+        let pre_int = 800usize;
+        let mut shifted = vec![0.0_f32; pre_int + clean.len() + 8];
+        for i in 0..clean.len() {
+            let target = pre_int as f32 + i as f32 + frac;
+            let lo = target.floor() as usize;
+            let f = target - lo as f32;
+            shifted[lo] += clean[i] * (1.0 - f);
+            shifted[lo + 1] += clean[i] * f;
+        }
+        let decoded = decode_samples(&shifted, &cfg)
+            .unwrap_or_else(|e| panic!("decode failed at frac={frac}: {e}"));
+        assert_eq!(decoded, payload, "payload mismatch at frac={frac}");
+    }
+}
+
+#[test]
 fn rejects_pure_noise() {
     let cfg = Config::default();
     let mut rng = LcgGauss::new(0xDEAD_BEEF);
