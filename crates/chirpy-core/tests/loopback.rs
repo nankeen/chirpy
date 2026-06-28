@@ -39,6 +39,33 @@ fn survives_moderate_awgn() {
 }
 
 #[test]
+fn survives_multipath_echo() {
+    // Two-tap acoustic-style channel: direct path + a single half-amplitude
+    // echo 4 ms later. This is roughly the worst case our DFE is sized for,
+    // and the canonical failure mode that prompted building it.
+    let cfg = Config::default();
+    let payload = b"multipath should be handled by the equalizer now".to_vec();
+    let clean = encode_samples(&payload, &cfg).unwrap();
+
+    let echo_delay_samples = (0.004 * cfg.sample_rate as f32) as usize; // 4 ms
+    let echo_gain = 0.5_f32;
+
+    // Direct path + delayed echo. Extend the buffer by the echo delay so the
+    // tail of the echo doesn't get truncated.
+    let mut received = clean.clone();
+    received.extend(std::iter::repeat(0.0_f32).take(echo_delay_samples));
+    for k in echo_delay_samples..received.len() {
+        let src = k - echo_delay_samples;
+        if src < clean.len() {
+            received[k] += echo_gain * clean[src];
+        }
+    }
+
+    let decoded = decode_samples(&received, &cfg).expect("decode failed under multipath");
+    assert_eq!(decoded, payload);
+}
+
+#[test]
 fn survives_fractional_timing_offset() {
     // Real acoustic channels never align to integer samples. Shift the entire
     // modulated waveform by a non-integer number of samples (linear interp on
