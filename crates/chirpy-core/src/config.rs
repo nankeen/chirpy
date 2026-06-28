@@ -47,6 +47,10 @@ pub struct Config {
     pub chirp_f0_hz: f32,
     pub chirp_f1_hz: f32,
     pub modulation: Modulation,
+    /// Chirp matched-filter detection threshold, as a fraction of the chirp's
+    /// self-energy. Higher = stricter (fewer false positives, more missed
+    /// frames in noisy rooms). The TUI also uses this for the "lock ✓" gate.
+    pub chirp_detect_threshold: f32,
 }
 
 impl Default for Config {
@@ -61,6 +65,7 @@ impl Default for Config {
             chirp_f0_hz: 4_000.0,
             chirp_f1_hz: 8_000.0,
             modulation: Modulation::Bpsk,
+            chirp_detect_threshold: 0.10,
         }
     }
 }

@@ -375,10 +375,11 @@ fn build_status(state: &SharedState, level_peak: f32, cfg: &Config) -> Vec<Line<
         -120.0
     };
     let chirp_ratio = state.trace.chirp_peak_ratio;
-    let chirp_status = if chirp_ratio >= 0.25 { "lock ✓" } else { "—" };
-    let chirp_color = if chirp_ratio >= 0.25 {
+    let threshold = cfg.chirp_detect_threshold;
+    let chirp_status = if chirp_ratio >= threshold { "lock ✓" } else { "—" };
+    let chirp_color = if chirp_ratio >= threshold {
         Color::Green
-    } else if chirp_ratio >= 0.10 {
+    } else if chirp_ratio >= threshold * 0.5 {
         Color::Yellow
     } else {
         Color::DarkGray

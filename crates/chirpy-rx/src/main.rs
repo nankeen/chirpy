@@ -34,6 +34,11 @@ struct Args {
     /// In live mode, how long to listen before giving up (seconds).
     #[arg(long, default_value_t = 30.0)]
     timeout: f32,
+    /// Chirp matched-filter detection threshold, as a fraction of the
+    /// chirp's self-energy. Lower = more permissive (catches weaker frames
+    /// but more false positives in noisy rooms).
+    #[arg(long, default_value_t = 0.10)]
+    chirp_threshold: f32,
     /// Live debug TUI: spectrogram, constellation, and status. Live audio only.
     #[arg(long, alias = "debug")]
     debug_tui: bool,
@@ -53,6 +58,7 @@ fn main() -> Result<()> {
         carrier_hz: args.carrier,
         baud: args.baud,
         modulation: args.modulation,
+        chirp_detect_threshold: args.chirp_threshold,
         ..Default::default()
     };
 

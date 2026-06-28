@@ -19,10 +19,6 @@ pub enum DecodeError {
     Frame(#[from] FrameError),
 }
 
-/// Detection threshold for the chirp matched filter, as a fraction of the
-/// chirp's self-energy.
-const CHIRP_DETECT_THRESHOLD: f32 = 0.25;
-
 #[derive(Debug, Clone, Default)]
 pub struct DecodeTrace {
     /// Best chirp matched-filter peak / chirp self-energy.
@@ -64,7 +60,7 @@ pub fn decode_samples_traced(
         trace.chirp_sub_sample = h.sub_sample;
     }
     let hit = match raw_hit {
-        Some(h) if trace.chirp_peak_ratio >= CHIRP_DETECT_THRESHOLD => h,
+        Some(h) if trace.chirp_peak_ratio >= cfg.chirp_detect_threshold => h,
         _ => return (Err(DecodeError::ChirpNotFound), trace),
     };
 
@@ -223,7 +219,7 @@ mod tests {
         let plain = decode_samples(&samples, &cfg).unwrap();
         let (traced, trace) = decode_samples_traced(&samples, &cfg);
         assert_eq!(traced.unwrap(), plain);
-        assert!(trace.chirp_peak_ratio >= CHIRP_DETECT_THRESHOLD);
+        assert!(trace.chirp_peak_ratio >= cfg.chirp_detect_threshold);
         assert!(!trace.symbols.is_empty());
         assert_eq!(trace.symbols.len(), trace.pre_eq_symbols.len());
     }
@@ -239,7 +235,7 @@ mod tests {
             .collect();
         let (result, trace) = decode_samples_traced(&noise, &cfg);
         assert!(matches!(result, Err(DecodeError::ChirpNotFound)));
-        assert!(trace.chirp_peak_ratio < CHIRP_DETECT_THRESHOLD);
+        assert!(trace.chirp_peak_ratio < cfg.chirp_detect_threshold);
         assert!(trace.symbols.is_empty());
     }
 }
