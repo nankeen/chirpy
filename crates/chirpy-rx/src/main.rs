@@ -8,6 +8,8 @@ use chirpy_core::{decode_samples, wav, Config, DecodeError, Modulation};
 use clap::Parser;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
+mod debug_tui;
+
 #[derive(Parser, Debug)]
 #[command(name = "chirpy-rx", about = "Acoustic packet modem — receiver")]
 struct Args {
@@ -32,6 +34,9 @@ struct Args {
     /// In live mode, how long to listen before giving up (seconds).
     #[arg(long, default_value_t = 30.0)]
     timeout: f32,
+    /// Live debug TUI: spectrogram, constellation, and status. Live audio only.
+    #[arg(long, alias = "debug")]
+    debug_tui: bool,
 }
 
 fn main() -> Result<()> {
@@ -50,6 +55,17 @@ fn main() -> Result<()> {
         modulation: args.modulation,
         ..Default::default()
     };
+
+    if args.debug_tui {
+        if args.wav.is_some() {
+            anyhow::bail!("--debug-tui is for live audio; not supported with --wav");
+        }
+        return debug_tui::run(
+            &cfg,
+            args.output.as_deref(),
+            Some(Duration::from_secs_f32(args.timeout)),
+        );
+    }
 
     let payload = if let Some(path) = &args.wav {
         let (samples, sr) = wav::read_wav(path)

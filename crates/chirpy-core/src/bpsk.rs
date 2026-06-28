@@ -1,39 +1,25 @@
 use num_complex::Complex;
 
-/// Differential BPSK modulation.
+/// Coherent BPSK modulation. Bit 0 → +1, bit 1 → −1. Symbols are real.
 ///
-/// We emit `bits.len() + 1` symbols: one reference, then one per data bit.
-/// Bit 0 = no phase change. Bit 1 = π phase flip.
-///
-/// Using *differential* encoding means the receiver doesn't need absolute
-/// carrier phase — it can decode by comparing each symbol to the previous one.
+/// We use coherent (not differential) BPSK because the decision-feedback
+/// equalizer needs an absolute phase reference. The receiver recovers that
+/// from the training preamble.
 pub fn modulate(bits: &[u8]) -> Vec<Complex<f32>> {
-    let mut symbols = Vec::with_capacity(bits.len() + 1);
-    let mut current = 1.0_f32;
-    symbols.push(Complex::new(current, 0.0));
-    for &b in bits {
-        debug_assert!(b <= 1);
-        if b == 1 {
-            current = -current;
-        }
-        symbols.push(Complex::new(current, 0.0));
-    }
-    symbols
+    bits.iter()
+        .map(|&b| {
+            debug_assert!(b <= 1);
+            Complex::new(if b == 0 { 1.0 } else { -1.0 }, 0.0)
+        })
+        .collect()
 }
 
-/// Inverse of [`modulate`]. Given complex symbols (after carrier recovery; an
-/// unknown global phase rotation is acceptable), decide each bit from the sign
-/// of Re{ s_n · conj(s_{n-1}) }.
+/// Coherent BPSK slicer. Returns 0 for `Re(s) > 0`, else 1.
 pub fn demodulate(symbols: &[Complex<f32>]) -> Vec<u8> {
-    if symbols.len() < 2 {
-        return Vec::new();
-    }
-    let mut bits = Vec::with_capacity(symbols.len() - 1);
-    for w in symbols.windows(2) {
-        let prod = w[1] * w[0].conj();
-        bits.push(if prod.re > 0.0 { 0 } else { 1 });
-    }
-    bits
+    symbols
+        .iter()
+        .map(|s| if s.re > 0.0 { 0 } else { 1 })
+        .collect()
 }
 
 #[cfg(test)]
@@ -49,12 +35,10 @@ mod tests {
     }
 
     #[test]
-    fn roundtrip_robust_to_global_phase() {
-        let bits = vec![1, 0, 1, 1, 0, 0, 1];
-        let syms = modulate(&bits);
-        let rot = Complex::from_polar(1.0, 0.7);
-        let rotated: Vec<_> = syms.iter().map(|s| s * rot).collect();
-        let out = demodulate(&rotated);
-        assert_eq!(bits, out);
+    fn maps_to_expected_symbols() {
+        let syms = modulate(&[0, 1, 0]);
+        assert_eq!(syms[0].re, 1.0);
+        assert_eq!(syms[1].re, -1.0);
+        assert_eq!(syms[2].re, 1.0);
     }
 }
